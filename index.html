@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Animaeus VR Cube Room</title>
+    <!-- A-Frame CDN for WebXR capabilities -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <style>
+        /* Essential styling for a full-screen VR experience */
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000; /* Ensures the body background is black outside the scene */
+        }
+    </style>
+</head>
+<body>
+    <a-scene>
+        <!-- A-Frame Asset Management System -->
+        <!-- All assets (images, sounds, models) should be defined here for preloading and reusability. -->
+        <a-assets>
+            <!--
+                IMPORTANT: Cross-Origin Resource Sharing (CORS) Issue Fix:
+                The previous error "The image element contains cross-origin data, and may not be loaded"
+                happens because browsers restrict loading images from different domains into WebGL
+                (which A-Frame uses) unless the server explicitly allows it via CORS headers.
+
+                To fix this, you MUST:
+                1. Host your 'animaeus.png' image on the SAME DOMAIN as your HTML file (e.g., directly on GitHub Pages
+                   in the same repository as your index.html, and use a relative path like 'animaeus.png').
+                2. Set 'crossorigin="anonymous"' on the <img> tag, even if on the same domain, as it helps
+                   handle various hosting configurations.
+
+                Please replace 'animaeus.png' with the correct relative or absolute URL to your
+                image hosted on GitHub Pages.
+            -->
+            <img id="animaeus-texture" src="animaeus.png" crossorigin="anonymous" alt="Animaeus Image">
+        </a-assets>
+
+        <!--
+            Camera Setup:
+            - 'camera': Enables standard camera functionality.
+            - 'look-controls': Allows user to look around with mouse/touch/VR headset.
+            - 'position': Places the camera inside the cube, slightly in front of the Animaeus wall.
+                          This makes it feel like you're entering the space facing the image.
+        -->
+        <a-entity camera look-controls position="0 0 4.5">
+            <!--
+                A-Frame Cursor:
+                - Provides a visual indicator (like a crosshair) for gaze interaction.
+                - Essential for basic click/interaction events in VR.
+            -->
+            <a-cursor></a-cursor>
+        </a-entity>
+
+        <!--
+            Lighting Setup:
+            Even though the walls are black, we need light to see the Animaeus image.
+            - 'ambient': Provides a general, non-directional light to illuminate the scene uniformly.
+                         Set to a low intensity to maintain the "deep, dark space" feel.
+            - 'directional': Simulates light from a distant source (like the sun), casting shadows.
+                             Directed slightly towards the Animaeus wall to make it stand out.
+        -->
+        <a-entity light="type: ambient; color: #FFF; intensity: 0.6"></a-entity>
+        <a-entity light="type: directional; color: #FFF; intensity: 0.5; position: 0 5 2"></a-entity>
+
+        <!--
+            The 10x10x10 Cube Room Construction:
+            Each wall is an <a-plane> entity.
+            - 'width' and 'height': Set to 10 units to form a 10x10 wall.
+            - 'position': Defines the center of the plane in 3D space.
+            - 'rotation': Rotates the plane to form the cube.
+                        Rotations are in degrees (X Y Z).
+            - 'material': Defines the appearance.
+                        'color: black' for the dark walls.
+                        'src: #animaeus-texture' to use the preloaded image for the Animaeus wall.
+        -->
+
+        <!-- Animaeus Wall (This will be the "back" wall when facing the initial camera position) -->
+        <a-plane
+            src="#animaeus-texture"
+            width="10" height="10"
+            position="0 0 -5"
+            material="side: front"
+        ></a-plane>
+
+        <!-- Floor -->
+        <a-plane
+            width="10" height="10"
+            position="0 -5 0"
+            rotation="-90 0 0"
+            material="color: black"
+        ></a-plane>
+
+        <!-- Ceiling -->
+        <a-plane
+            width="10" height="10"
+            position="0 5 0"
+            rotation="90 0 0"
+            material="color: black"
+        ></a-plane>
+
+        <!-- Left Wall -->
+        <a-plane
+            width="10" height="10"
+            position="-5 0 0"
+            rotation="0 90 0"
+            material="color: black"
+        ></a-plane>
+
+        <!-- Right Wall -->
+        <a-plane
+            width="10" height="10"
+            position="5 0 0"
+            rotation="0 -90 0"
+            material="color: black"
+        ></a-plane>
+
+        <!-- Front Wall (completes the cube) -->
+        <a-plane
+            width="10" height="10"
+            position="0 0 5"
+            rotation="0 180 0"
+            material="color: black"
+        ></a-plane>
+
+    </a-scene>
+</body>
+</html>
