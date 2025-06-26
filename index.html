@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Animaeus VR Cube Room - Interactive Orb</title>
+    <title>Animaeus VR Cube Room - VR-Optimized Orb</title>
+    <!-- A-Frame CDN for WebXR capabilities -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <style>
         /* Essential styling for a full-screen VR experience */
@@ -13,29 +14,44 @@
     </style>
 </head>
 <body>
-    <a-scene>
+    <!-- 
+        CHANGE #1: A more robust scene-controller component.
+        Instead of attaching scripts to individual objects, we'll attach one main
+        controller to the scene itself. This component will manage all interactions,
+        which is a more stable pattern for complex scenes.
+    -->
+    <a-scene scene-controller>
         <a-assets>
             <img id="animaeus-texture" src="https://raw.githubusercontent.com/augmentedthinker/animaeus/main/ghost.png" crossorigin="anonymous" alt="Animaeus Image">
         </a-assets>
 
-        <a-entity camera look-controls position="0 0 4.5">
+        <a-entity camera look-controls position="0 1.6 4.5">
             <a-cursor></a-cursor>
         </a-entity>
 
+        <!-- Lighting Setup (no changes) -->
         <a-entity id="ambient-light" light="type: ambient; color: #FFF; intensity: 0.8"></a-entity>
         <a-entity light="type: directional; color: #FFF; intensity: 0.7; position: 0 5 1"></a-entity>
         <a-entity light="type: point; color: #FFF; intensity: 0.3; position: 0 0 4.9"></a-entity>
 
+        <!--
+            CHANGE #2: Repositioned and simplified the orb.
+            - Positioned at (0, 1.5, 0), which is dead-center in the room, making it impossible to miss.
+            - Material is now a simple, bright color without emissive properties, which is much
+              friendlier for mobile/VR rendering.
+        -->
         <a-sphere
             id="interactive-orb"
-            position="-2 1.5 2"
+            position="0 1.5 0"
             radius="0.4"
-            material="color: #E0E0E0; emissive: #FFFFFF; emissiveIntensity: 0.2"
-            animation="property: position; to: -2 1.7 2; dur: 3000; easing: easeInOutSine; loop: true; dir: alternate"
-            orb-color-changer
-        >
+            material="color: #FFD700" 
+            animation="property: rotation; to: 0 360 0; dur: 10000; easing: linear; loop: true;">
         </a-sphere>
 
+        <!-- 
+            Animaeus Wall: No major changes, but its click logic is now handled by the scene-controller.
+            I removed the individual component attributes from here.
+        -->
         <a-plane
             id="animaeus-wall"
             src="#animaeus-texture"
@@ -44,55 +60,25 @@
             material="side: front; emissive: #000; emissiveIntensity: 0.1"
             animation="property: scale; from: 1 1 1; to: 1.02 1.02 1.02; dur: 4000; easing: easeInOutSine; loop: true; dir: alternate"
             animation__gazeenter="property: material.emissiveIntensity; to: 0.5; dur: 300; easing: easeOutQuad; startEvents: mouseenter"
-            animation__gazeleave="property: material.emissiveIntensity; to: 0.1; dur: 300; easing: easeOutQuad; startEvents: mouseleave"
-            animation__clickcolorshift="property: material.color; from: #FFFFFF; to: #87CEEB; dur: 150; easing: easeOutQuad; startEvents: click"
-            animation__clickcolorback="property: material.color; from: #87CEEB; to: #FFFFFF; dur: 600; easing: easeOutQuad; delay: 150; startEvents: click"
-            click-ripple-light
-        ></a-plane>
+            animation__gazeleave="property: material.emissiveIntensity; to: 0.1; dur: 300; easing: easeOutQuad; startEvents: mouseleave">
+        </a-plane>
 
-        <a-plane id="floor" width="10" height="10" position="0 -5 0" rotation="-90 0 0" material="color: black"></a-plane>
-        <a-plane id="ceiling" width="10" height="10" position="0 5 0" rotation="90 0 0" material="color: black"></a-plane>
-        <a-plane id="left-wall" width="10" height="10" position="-5 0 0" rotation="0 90 0" material="color: black"></a-plane>
-        <a-plane id="right-wall" width="10" height="10" position="5 0 0" rotation="0 -90 0" material="color: black"></a-plane>
-        <a-plane id="back-wall" width="10" height="10" position="0 0 5" rotation="0 180 0" material="color: black"></a-plane>
+        <!-- Room Walls (IDs are still here for targeting) -->
+        <a-plane id="floor" width="10" height="10" position="0 -5 0" rotation="-90 0 0" material="color: #111"></a-plane>
+        <a-plane id="ceiling" width="10" height="10" position="0 5 0" rotation="90 0 0" material="color: #111"></a-plane>
+        <a-plane id="left-wall" width="10" height="10" position="-5 0 0" rotation="0 90 0" material="color: #111"></a-plane>
+        <a-plane id="right-wall" width="10" height="10" position="5 0 0" rotation="0 -90 0" material="color: #111"></a-plane>
+        <a-plane id="back-wall" width="10" height="10" position="0 0 5" rotation="0 180 0" material="color: #111"></a-plane>
 
+        <!-- CHANGE #3: Consolidated and improved script -->
         <script>
-            // --- Component to trigger light ripple on Animaeus (from your original code) ---
-            AFRAME.registerComponent('click-ripple-light', {
+            AFRAME.registerComponent('scene-controller', {
                 init: function () {
-                    const el = this.el;
-                    const ambientLight = document.querySelector('#ambient-light');
-                    if (!ambientLight) {
-                        console.error("Ambient light entity with ID 'ambient-light' not found.");
-                        return;
-                    }
-                    el.addEventListener('click', function () {
-                        ambientLight.setAttribute('animation__ripple', {
-                            property: 'light.intensity', from: 0.8, to: 1.2, dur: 200, easing: 'easeOutSine', dir: 'alternate', loop: 2
-                        });
-                        setTimeout(() => { ambientLight.setAttribute('light', 'intensity', 0.8); }, 400);
-                    });
-                }
-            });
-
-            // --- NEW: Component to handle the orb's color-changing functionality ---
-            AFRAME.registerComponent('orb-color-changer', {
-                init: function () {
-                    const el = this.el; // The orb itself
-
-                    // Define a list of color themes for the room
-                    const colorThemes = [
-                        { name: 'Default', floor: '#000000', ceiling: '#000000', walls: '#000000' },
-                        { name: 'Twilight', floor: '#1E2A3A', ceiling: '#2F4562', walls: '#4A6C9B' },
-                        { name: 'Sunrise', floor: '#FF9B54', ceiling: '#FFD3A3', walls: '#FFB58C' },
-                        { name: 'Forest', floor: '#2A3D2F', ceiling: '#4F6C53', walls: '#3E5641' },
-                        { name: 'Abyss', floor: '#0D0221', ceiling: '#1D034A', walls: '#240046' }
-                    ];
-
-                    let currentThemeIndex = 0;
-
-                    // Cache the wall entities for performance
-                    const roomWalls = {
+                    // --- Cache all our scene elements on startup ---
+                    this.animaeusWall = document.querySelector('#animaeus-wall');
+                    this.interactiveOrb = document.querySelector('#interactive-orb');
+                    this.ambientLight = document.querySelector('#ambient-light');
+                    this.roomWalls = {
                         floor: document.querySelector('#floor'),
                         ceiling: document.querySelector('#ceiling'),
                         left: document.querySelector('#left-wall'),
@@ -100,18 +86,61 @@
                         back: document.querySelector('#back-wall')
                     };
 
-                    el.addEventListener('click', () => {
-                        // Move to the next theme, looping back to the start if necessary
-                        currentThemeIndex = (currentThemeIndex + 1) % colorThemes.length;
-                        const newTheme = colorThemes[currentThemeIndex];
+                    // --- Define the color themes ---
+                    this.colorThemes = [
+                        { name: 'Default', floor: '#111111', ceiling: '#111111', walls: '#111111', orb: '#FFD700' },
+                        { name: 'Twilight', floor: '#1E2A3A', ceiling: '#2F4562', walls: '#4A6C9B', orb: '#A7C7E7' },
+                        { name: 'Sunrise', floor: '#FF9B54', ceiling: '#FFD3A3', walls: '#FFB58C', orb: '#FFFFFF' },
+                        { name: 'Forest', floor: '#2A3D2F', ceiling: '#4F6C53', walls: '#3E5641', orb: '#B1D8B7' },
+                        { name: 'Abyss', floor: '#0D0221', ceiling: '#1D034A', walls: '#240046', orb: '#C9A0DC' }
+                    ];
+                    this.currentThemeIndex = 0;
 
-                        // Apply the new colors to the room walls with a smooth animation
-                        const animationDuration = 1500; // in milliseconds
-                        roomWalls.floor.setAttribute('animation', { property: 'material.color', to: newTheme.floor, dur: animationDuration });
-                        roomWalls.ceiling.setAttribute('animation', { property: 'material.color', to: newTheme.ceiling, dur: animationDuration });
-                        roomWalls.left.setAttribute('animation', { property: 'material.color', to: newTheme.walls, dur: animationDuration });
-                        roomWalls.right.setAttribute('animation', { property: 'material.color', to: newTheme.walls, dur: animationDuration });
-                        roomWalls.back.setAttribute('animation', { property: 'material.color', to: newTheme.walls, dur: animationDuration });
+                    // --- Bind the event listeners ---
+                    // We use .bind(this) to make sure 'this' refers to our component inside the functions
+                    this.onAnimaeusClick = this.onAnimaeusClick.bind(this);
+                    this.onOrbClick = this.onOrbClick.bind(this);
+
+                    this.animaeusWall.addEventListener('click', this.onAnimaeusClick);
+                    this.interactiveOrb.addEventListener('click', this.onOrbClick);
+                },
+
+                // --- Interaction Logic ---
+                onAnimaeusClick: function () {
+                    // This logic is from your original code, now managed here.
+                    this.ambientLight.setAttribute('animation__ripple', {
+                        property: 'light.intensity', from: 0.8, to: 1.2, dur: 200, easing: 'easeOutSine', dir: 'alternate', loop: 2
+                    });
+
+                    // Also trigger the Animaeus wall's own color shift
+                    this.animaeusWall.setAttribute('animation__clickcolorshift', {
+                        property: 'material.color', from: '#FFFFFF', to: '#87CEEB', dur: 150, easing: 'easeOutQuad', startEvents: 'click'
+                    });
+                     this.animaeusWall.setAttribute('animation__clickcolorback', {
+                        property: 'material.color', from: '#87CEEB', to: '#FFFFFF', dur: 600, easing: 'easeOutQuad', delay: 150, startEvents: 'click'
+                    });
+                },
+
+                onOrbClick: function () {
+                    // Cycle to the next theme
+                    this.currentThemeIndex = (this.currentThemeIndex + 1) % this.colorThemes.length;
+                    const newTheme = this.colorThemes[this.currentThemeIndex];
+                    const animDuration = 1500;
+
+                    // Animate all wall colors
+                    Object.values(this.roomWalls).forEach(wall => {
+                        wall.setAttribute('animation__color', {
+                            property: 'material.color',
+                            to: wall.id.includes('wall') ? newTheme.walls : newTheme[wall.id],
+                            dur: animDuration
+                        });
+                    });
+                    
+                    // Animate the orb color
+                     this.interactiveOrb.setAttribute('animation__color', {
+                        property: 'material.color',
+                        to: newTheme.orb,
+                        dur: animDuration
                     });
                 }
             });
