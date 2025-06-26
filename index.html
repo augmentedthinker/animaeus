@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Animaeus VR Cube Room</title>
+    <!-- A-Frame CDN for WebXR capabilities -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <style>
         /* Essential styling for a full-screen VR experience */
@@ -22,31 +23,77 @@
             <a-cursor></a-cursor>
         </a-entity>
 
-        <a-entity light="type: ambient; color: #FFF; intensity: 0.8"></a-entity>
+        <!-- Enhanced Lighting Setup for VR Visibility -->
+        <!-- Added id="ambient-light" to control it via interaction -->
+        <a-entity id="ambient-light" light="type: ambient; color: #FFF; intensity: 0.8"></a-entity>
         <a-entity light="type: directional; color: #FFF; intensity: 0.7; position: 0 5 1"></a-entity>
         <a-entity light="type: point; color: #FFF; intensity: 0.3; position: 0 0 4.9"></a-entity>
 
+        <!--
+            The 10x10x10 Cube Room Construction:
+            Animaeus Wall with **Enhanced Breathing Animation** and **New Touch-Activated Animations**.
 
-    front wall- Animaeus breathes!!!
+            - Breathing Animation: Continues to provide a subtle, continuous pulse.
+            - Gaze Glow: Changes the emissive intensity (glow) of the image on mouseenter/mouseleave events.
+              'emissive' and 'emissiveIntensity' added to the material for this effect.
+            - Click Color Shift: Briefly changes the color of the image on click.
+            - Room Ripple: A custom animation on the ambient light, triggered by clicking Animaeus,
+              to simulate a subtle ripple of light through the room.
+        -->
+        <a-plane
+            id="animaeus-wall"
+            src="#animaeus-texture"
+            width="10" height="10"
+            position="0 0 -5"
+            material="side: front; emissive: #000; emissiveIntensity: 0.1"
+            animation="property: scale; from: 1 1 1; to: 1.02 1.02 1.02; dur: 4000; easing: easeInOutSine; loop: true; dir: alternate"
 
+            <!-- Animations for Gaze (mouseenter/mouseleave) -->
+            animation__gazeenter="property: material.emissiveIntensity; to: 0.5; dur: 300; easing: easeOutQuad; startEvents: mouseenter"
+            animation__gazeleave="property: material.emissiveIntensity; to: 0.1; dur: 300; easing: easeOutQuad; startEvents: mouseleave"
 
+            <!-- Animations for Click -->
+            <!-- Brief color shift of Animaeus image itself -->
+            animation__clickcolorshift="property: material.color; from: #FFFFFF; to: #87CEEB; dur: 150; easing: easeOutQuad; startEvents: click"
+            animation__clickcolorback="property: material.color; from: #87CEEB; to: #FFFFFF; dur: 600; easing: easeOutQuad; delay: 150; startEvents: click"
 
-<a-plane
-    id="animaeus-wall" src="#animaeus-texture"
-    width="10" height="10"
-    position="0 0 -5"
-    material="side: front"
+            <!-- Custom component to trigger ambient light animation on its own click -->
+            click-ripple-light
+        ></a-plane>
 
+        <!-- Custom A-Frame component to handle the light ripple -->
+        <script>
+            AFRAME.registerComponent('click-ripple-light', {
+                init: function () {
+                    const el = this.el; // Reference to animaeus-wall
+                    const ambientLight = document.querySelector('#ambient-light');
 
-animation="property: scale; from: 1 1 1; to: 1.05 1.05 1.05; dur: 2500; easing: easeInOutQuad; loop: true; dir: alternate"
-    
-    ></a-plane>
+                    if (!ambientLight) {
+                        console.error("Ambient light entity with ID 'ambient-light' not found.");
+                        return;
+                    }
 
-        
+                    el.addEventListener('click', function () {
+                        // Animate ambient light intensity on click
+                        ambientLight.setAttribute('animation__ripple', {
+                            property: 'light.intensity',
+                            from: 0.8,
+                            to: 1.2, // Briefly brighten
+                            dur: 200,
+                            easing: 'easeOutSine',
+                            dir: 'alternate',
+                            loop: 2 // Go up and down twice for a ripple effect
+                        });
+                        // Reset to original intensity after the animation
+                        setTimeout(() => {
+                            ambientLight.setAttribute('light', 'intensity', 0.8);
+                        }, 400); // Dur 200 * Loop 2 = 400ms for animation to complete
+                    });
+                }
+            });
+        </script>
 
-            
-       
-
+        <!-- Floor -->
         <a-plane
             width="10" height="10"
             position="0 -5 0"
@@ -54,6 +101,7 @@ animation="property: scale; from: 1 1 1; to: 1.05 1.05 1.05; dur: 2500; easing: 
             material="color: black"
         ></a-plane>
 
+        <!-- Ceiling -->
         <a-plane
             width="10" height="10"
             position="0 5 0"
@@ -61,6 +109,7 @@ animation="property: scale; from: 1 1 1; to: 1.05 1.05 1.05; dur: 2500; easing: 
             material="color: black"
         ></a-plane>
 
+        <!-- Left Wall -->
         <a-plane
             width="10" height="10"
             position="-5 0 0"
@@ -68,6 +117,7 @@ animation="property: scale; from: 1 1 1; to: 1.05 1.05 1.05; dur: 2500; easing: 
             material="color: black"
         ></a-plane>
 
+        <!-- Right Wall -->
         <a-plane
             width="10" height="10"
             position="5 0 0"
@@ -75,6 +125,7 @@ animation="property: scale; from: 1 1 1; to: 1.05 1.05 1.05; dur: 2500; easing: 
             material="color: black"
         ></a-plane>
 
+        <!-- Front Wall (completes the cube) -->
         <a-plane
             width="10" height="10"
             position="0 0 5"
