@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Animaeus VR Cube Room</title>
-    <!-- A-Frame CDN for WebXR capabilities -->
+    <title>Animaeus VR Cube Room - Living Presence</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <style>
         /* Essential styling for a full-screen VR experience */
@@ -23,115 +22,132 @@
             <a-cursor></a-cursor>
         </a-entity>
 
-        <!-- Enhanced Lighting Setup for VR Visibility -->
-        <!-- Added id="ambient-light" to control it via interaction -->
-        <a-entity id="ambient-light" light="type: ambient; color: #FFF; intensity: 0.8"></a-entity>
-        <a-entity light="type: directional; color: #FFF; intensity: 0.7; position: 0 5 1"></a-entity>
-        <a-entity light="type: point; color: #FFF; intensity: 0.3; position: 0 0 4.9"></a-entity>
+        <a-entity id="ambient-light" light="type: ambient; color: #FFF; intensity: 0.6"></a-entity>
+        <a-entity light="type: directional; color: #FFF; intensity: 0.5; position: 0 5 1"></a-entity>
+        <a-entity id="animaeus-point-light" light="type: point; color: #87CEEB; intensity: 0; position: 0 0 4"></a-entity>
 
-        <!--
-            The 10x10x10 Cube Room Construction:
-            Animaeus Wall with **Enhanced Breathing Animation** and **New Touch-Activated Animations**.
-
-            - Breathing Animation: Continues to provide a subtle, continuous pulse.
-            - Gaze Glow: Changes the emissive intensity (glow) of the image on mouseenter/mouseleave events.
-              'emissive' and 'emissiveIntensity' added to the material for this effect.
-            - Click Color Shift: Briefly changes the color of the image on click.
-            - Room Ripple: A custom animation on the ambient light, triggered by clicking Animaeus,
-              to simulate a subtle ripple of light through the room.
-        -->
         <a-plane
             id="animaeus-wall"
             src="#animaeus-texture"
             width="10" height="10"
             position="0 0 -5"
-            material="side: front; emissive: #000; emissiveIntensity: 0.1"
-            animation="property: scale; from: 1 1 1; to: 1.02 1.02 1.02; dur: 4000; easing: easeInOutSine; loop: true; dir: alternate"
+            material="side: front; emissive: #000; emissiveIntensity: 0.1; transparent: true"
+            animation="property: scale; from: 1 1 1; to: 1.01 1.01 1.01; dur: 5000; easing: easeInOutSine; loop: true; dir: alternate"
 
-            <!-- Animations for Gaze (mouseenter/mouseleave) -->
-            animation__gazeenter="property: material.emissiveIntensity; to: 0.5; dur: 300; easing: easeOutQuad; startEvents: mouseenter"
-            animation__gazeleave="property: material.emissiveIntensity; to: 0.1; dur: 300; easing: easeOutQuad; startEvents: mouseleave"
+            animation__gazeenter="property: material.emissiveIntensity; to: 0.4; dur: 400; easing: easeOutQuad; startEvents: mouseenter"
+            animation__gazeleave="property: material.emissiveIntensity; to: 0.1; dur: 500; easing: easeOutQuad; startEvents: mouseleave"
 
-            <!-- Animations for Click -->
-            <!-- Brief color shift of Animaeus image itself -->
-            animation__clickcolorshift="property: material.color; from: #FFFFFF; to: #87CEEB; dur: 150; easing: easeOutQuad; startEvents: click"
-            animation__clickcolorback="property: material.color; from: #87CEEB; to: #FFFFFF; dur: 600; easing: easeOutQuad; delay: 150; startEvents: click"
-
-            <!-- Custom component to trigger ambient light animation on its own click -->
-            click-ripple-light
+            animaeus-responder
         ></a-plane>
 
-        <!-- Custom A-Frame component to handle the light ripple -->
         <script>
-            AFRAME.registerComponent('click-ripple-light', {
+            AFRAME.registerComponent('animaeus-responder', {
                 init: function () {
                     const el = this.el; // Reference to animaeus-wall
                     const ambientLight = document.querySelector('#ambient-light');
+                    const animaeusLight = document.querySelector('#animaeus-point-light');
+                    
+                    // Initialize a Web Audio API context for sound feedback
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-                    if (!ambientLight) {
-                        console.error("Ambient light entity with ID 'ambient-light' not found.");
+                    if (!ambientLight || !animaeusLight) {
+                        console.error("Required light entities not found.");
                         return;
                     }
 
-                    el.addEventListener('click', function () {
-                        // Animate ambient light intensity on click
-                        ambientLight.setAttribute('animation__ripple', {
-                            property: 'light.intensity',
-                            from: 0.8,
-                            to: 1.2, // Briefly brighten
-                            dur: 200,
-                            easing: 'easeOutSine',
-                            dir: 'alternate',
-                            loop: 2 // Go up and down twice for a ripple effect
-                        });
-                        // Reset to original intensity after the animation
-                        setTimeout(() => {
-                            ambientLight.setAttribute('light', 'intensity', 0.8);
-                        }, 400); // Dur 200 * Loop 2 = 400ms for animation to complete
+                    // --- 1. ENHANCED CLICK INTERACTION ---
+                    el.addEventListener('click', () => {
+                        // Play a sound, trigger the light ripple, and shift color all at once.
+                        this.playInteractionSound(audioCtx);
+                        this.triggerLightRipple(ambientLight, animaeusLight);
+                        this.triggerColorShift();
+                    });
+
+                    // --- 2. GAZE TRACKING ---
+                    // Animaeus subtly shifts its texture to "look" at the cursor
+                    el.addEventListener('mousemove', (event) => {
+                        const intersection = event.detail.intersection;
+                        if (intersection) {
+                            // The uv coordinate gives a 0-1 range on the texture. We convert it to a -1 to 1 range.
+                            const uv = intersection.uv;
+                            const offsetX = (uv.x - 0.5) * 0.08; // Small horizontal shift
+                            const offsetY = (uv.y - 0.5) * 0.08; // Small vertical shift
+                            el.setAttribute('material', 'offset', `${offsetX} ${offsetY}`);
+                        }
+                    });
+                    
+                    // Reset gaze when cursor leaves
+                     el.addEventListener('mouseleave', () => {
+                         el.setAttribute('material', 'offset', '0 0');
+                     });
+                },
+
+                // --- HELPER FUNCTIONS ---
+
+                /**
+                 * Plays a simple, synthesized sound to acknowledge interaction.
+                 * This avoids needing external audio files.
+                 */
+                playInteractionSound: function(audioCtx) {
+                    const oscillator = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(220, audioCtx.currentTime); // A4 note
+                    gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                    
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+                    oscillator.start(audioCtx.currentTime);
+                    oscillator.stop(audioCtx.currentTime + 0.5);
+                },
+
+                /**
+                 * Triggers a more dramatic light ripple effect on both lights.
+                 */
+                triggerLightRipple: function(ambientLight, animaeusLight) {
+                    // Animate Animaeus's personal light
+                    animaeusLight.setAttribute('animation__ripple', {
+                        property: 'light.intensity',
+                        from: 1.5,
+                        to: 0,
+                        dur: 600,
+                        easing: 'easeInQuad'
+                    });
+
+                    // Animate the room's ambient light
+                    ambientLight.setAttribute('animation__ripple', {
+                        property: 'light.intensity',
+                        from: 0.3,
+                        to: 0.8,
+                        dur: 400,
+                        easing: 'easeOutSine',
+                        dir: 'alternate',
+                        loop: 1
+                    });
+                },
+                
+                /**
+                 * Manages the color shift animation on the material itself.
+                 */
+                triggerColorShift: function() {
+                    this.el.setAttribute('animation__clickcolorshift', {
+                        property: 'material.color', from: '#FFFFFF', to: '#87CEEB', dur: 150, easing: 'easeOutQuad', startEvents: 'click'
+                    });
+                     this.el.setAttribute('animation__clickcolorback', {
+                        property: 'material.color', from: '#87CEEB', to: '#FFFFFF', dur: 600, easing: 'easeInQuad', startEvents: 'click', delay: 150
                     });
                 }
             });
         </script>
 
-        <!-- Floor -->
-        <a-plane
-            width="10" height="10"
-            position="0 -5 0"
-            rotation="-90 0 0"
-            material="color: black"
-        ></a-plane>
-
-        <!-- Ceiling -->
-        <a-plane
-            width="10" height="10"
-            position="0 5 0"
-            rotation="90 0 0"
-            material="color: black"
-        ></a-plane>
-
-        <!-- Left Wall -->
-        <a-plane
-            width="10" height="10"
-            position="-5 0 0"
-            rotation="0 90 0"
-            material="color: black"
-        ></a-plane>
-
-        <!-- Right Wall -->
-        <a-plane
-            width="10" height="10"
-            position="5 0 0"
-            rotation="0 -90 0"
-            material="color: black"
-        ></a-plane>
-
-        <!-- Front Wall (completes the cube) -->
-        <a-plane
-            width="10" height="10"
-            position="0 0 5"
-            rotation="0 180 0"
-            material="color: black"
-        ></a-plane>
+        <a-plane width="10" height="10" position="0 -5 0" rotation="-90 0 0" material="color: #111"></a-plane>
+        <a-plane width="10" height="10" position="0 5 0" rotation="90 0 0" material="color: #111"></a-plane>
+        <a-plane width="10" height="10" position="-5 0 0" rotation="0 90 0" material="color: #111"></a-plane>
+        <a-plane width="10" height="10" position="5 0 0" rotation="0 -90 0" material="color: #111"></a-plane>
+        <a-plane width="10" height="10" position="0 0 5" rotation="0 180 0" material="color: black"></a-plane>
 
     </a-scene>
 </body>
